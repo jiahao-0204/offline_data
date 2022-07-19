@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/ori/catkin_ws_2/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/ori/catkin_ws_2/src/beginner_tutorials/include/**",
+        "/home/ori/catkin_ws_2/src/learning_tf2/include/**",
+        "/home/ori/catkin_ws/src/offline_data/include/**",
+        "/home/ori/catkin_ws/src/offline_data_3/include/**",
+        "/home/ori/catkin_ws_2/src/r2d2/include/**",
+        "/home/ori/catkin_ws_2/src/using_markers/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

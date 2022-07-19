@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- arguments -->
+  <arg name="file_path"     default="$(find offline_data)/file/exp01-02/slam_pose_graph.g2o"/> 
+  <arg name="rviz_config"   default="$(find offline_data)/rviz/visualization.rviz"/>
+
+  <!-- launch offline_data -->
+  <node name="offline_data" pkg="offline_data" type="offline_data" args="$(arg file_path)"/>
+
+  <!-- launch rviz -->
+  <node name="offline_rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)"/>  
+
+</launch>
