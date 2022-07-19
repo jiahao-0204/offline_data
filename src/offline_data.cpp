@@ -131,6 +131,9 @@ int main(int argc, char **argv){
     // PointCloud2 to /all_ds
     ros::Publisher pub_all_ds = nh.advertise<sensor_msgs::PointCloud2> ("all_ds", 100);
 
+    // Pose to /pose
+    ros::Publisher pub_pose = nh.advertise<geometry_msgs::PoseStamped> ("pose", 100);
+
     // Path to /path
     ros::Publisher pub_path = nh.advertise<nav_msgs::Path> ("path", 100);
 
@@ -256,6 +259,9 @@ int main(int argc, char **argv){
             
             // broadcast transform to /tf2
             br.sendTransform(transformStamped);
+
+            // boradcast pose to /pose
+            pub_pose.publish(pose);
 
             // broadcast path to /path
             pub_path.publish(path);
