@@ -8,12 +8,98 @@
 #include <pcl_ros/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/filters/voxel_grid.h>
+#include <pcl_ros/filters/passthrough.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
+
+#include <math.h>
+
+
+
+sensor_msgs::PointCloud2 filter_voxelgrid(const sensor_msgs::PointCloud2 & msg_input, 
+    float size_x, float size_y, float size_z){
+    // downsample pointclouds in msg format using voxelgrid
+    
+    // define variables
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_input    (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output   (new pcl::PointCloud<pcl::PointXYZ>);
+    sensor_msgs::PointCloud2 msg_output;
+    
+
+    // ================ convert msg -> pc ================
+    pcl::fromROSMsg(msg_input, *pc_input);
+    // ===================================================
+    
+
+    // ================ Voxelgrid Filter =================
+    pcl::VoxelGrid<pcl::PointXYZ> filter;
+    filter.setInputCloud(pc_input);
+    filter.setLeafSize(size_x, size_y, size_z);
+    filter.filter(*pc_output);
+    // ===================================================
+
+
+    // ================ convert pc -> msg ================
+    pcl::toROSMsg(*pc_output, msg_output);
+    // ===================================================
+
+    // return
+    return msg_output;
+};
+
+
+
+sensor_msgs::PointCloud2 filter_range(const sensor_msgs::PointCloud2 & msg_input, 
+    const float threshold){
+    // filter point cloud is msgs format by range
+    
+    // define variables
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_input    (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output   (new pcl::PointCloud<pcl::PointXYZ>);
+    sensor_msgs::PointCloud2 msg_output;
+    
+
+    // ================ convert msg -> pc ================
+    pcl::fromROSMsg(msg_input, *pc_input);
+    // ===================================================
+
+
+    // ================== Range Filter ===================
+    pcl::ExtractIndices<pcl::PointXYZ> filter;
+    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+
+    for (int p = 0; p < pc_input->points.size(); ++p) {        
+        // calcualte distance
+        float distance2 =   (pc_input->points[p].x * pc_input->points[p].x) +
+                            (pc_input->points[p].y * pc_input->points[p].y) + 
+                            (pc_input->points[p].z * pc_input->points[p].z);
+        float distance = std::sqrt(distance2);
+        // record points outside threshold
+        if (distance > threshold){
+            inliers->indices.push_back(p);
+        };
+    };
+    filter.setInputCloud(pc_input);
+    filter.setIndices(inliers);
+    filter.filter(*pc_output);
+    // ===================================================
+
+
+    // ================ convert pc -> msg ================
+    pcl::toROSMsg(*pc_output, msg_output);
+    // ===================================================
+
+    // return
+    return msg_output;
+};
+
+
+
 
 
 
@@ -22,6 +108,12 @@ int main(int argc, char **argv){
     // e.g. 
     // rosrun offline_data offline_data /home/ori/Desktop/vilens_slam_offline_data/2022-03-03-hilti-runs/exp02/exp02-01/slam_pose_graph.g2o
 
+
+    // =================== ARGUMENTS =====================
+    std::string path_posegraph = argv[1];
+    float range_threshold = std::stof(std::string(argv[2]));
+    float voxelgrid_size = std::stof(std::string(argv[3]));
+    // ===================================================
 
 
     // ===================== NODE ========================
@@ -63,7 +155,6 @@ int main(int argc, char **argv){
     // ============ READ POSEGRAPH FILE ==================
     
     // extract path to pose graph file & path to its folder
-    std::string path_posegraph = argv[1];
     std::string path_parent = path_posegraph.substr(0, path_posegraph.rfind("/"));
 
     // read posegraph file
@@ -146,7 +237,7 @@ int main(int argc, char **argv){
             transformStamped.transform.rotation.z = qz;
             transformStamped.transform.rotation.w = qw;
 
-            // stored in pose object
+            // stored as pose object
             geometry_msgs::PoseStamped pose;
             pose.header.frame_id = frame_local;
             pose.header.stamp = stamp;
@@ -158,7 +249,7 @@ int main(int argc, char **argv){
             pose.pose.orientation.z = qz;
             pose.pose.orientation.w = qw;
 
-            // stored in path object
+            // stored as path object
             path.header.frame_id = frame_local;
             path.header.stamp = stamp;
             path.poses.push_back(pose);
@@ -181,12 +272,12 @@ int main(int argc, char **argv){
 
             // define variable
             pcl::PointCloud<pcl::PointXYZ> cloud;
-            char path_sub[200];
+            std::stringstream path_sub;
             std::string path_pcd;
 
             // compute path for pcd file
-            sprintf(path_sub, "/individual_clouds/cloud_%d_%d.pcd", sec, nsec);
-            path_pcd = path_parent + path_sub;
+            path_sub << "/individual_clouds/cloud_" << sec << "_" << std::setfill('0') << std::setw(9) << nsec << ".pcd";
+            path_pcd = path_parent + path_sub.str();
 
             // read from file
             if (pcl::io::loadPCDFile<pcl::PointXYZ>(path_pcd, cloud) < 0){
@@ -203,7 +294,13 @@ int main(int argc, char **argv){
             pc_msg.header.stamp = stamp;
             // ===================================================
 
-        
+
+
+            // ================= FILTER BY RANGE =================
+            pc_msg = filter_range(pc_msg, range_threshold);
+            // ===================================================
+
+
 
             // ============ TRANSFORM TO LOCAL FRAME =============
             // 
@@ -231,36 +328,22 @@ int main(int argc, char **argv){
             // 
             // 1. merge transformed point cloud with previous point clouds
             // 
-
             sensor_msgs::PointCloud2 pc_msg_merged;
             pcl::concatenatePointCloud(pc_msg_transformed, pc_msg_all, pc_msg_merged);
             // ===================================================
 
 
 
-            // ============ DOWNSAMPLE POINT CLOUD ===============
-            // 
-            // 1. downsample merged point cloud
-            // 2. publish to /all_ds topic 
-            // 
-            
-            // define variable
-            pcl::PointCloud<pcl::PointXYZ>::Ptr pc_input(new pcl::PointCloud<pcl::PointXYZ>);
-            pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output(new pcl::PointCloud<pcl::PointXYZ>);
-            
-            // convert merged point cloud into desired format
-            pcl::fromROSMsg(pc_msg_merged, *pc_input);
-
-            // Voxelgrid filter
-            pcl::VoxelGrid<pcl::PointXYZ> filter;
-            filter.setInputCloud(pc_input);
-            filter.setLeafSize(0.075, 0.075, 0.075f);
-            filter.filter(*pc_output);
-
-            // publish to /all_ds topic
-            pcl::toROSMsg(*pc_output, pc_msg_all);
-            pub_all_ds.publish(pc_msg_all);
+            // ============= DOWNSAMPLE POINT CLOUD ==============            
+            pc_msg_all = filter_voxelgrid(pc_msg_merged, voxelgrid_size, voxelgrid_size, voxelgrid_size);
             // ===================================================
+
+
+
+            // =============== PUBLISH TO /all_ds ================
+            pub_all_ds.publish(pc_msg_all); // publish to /all_ds topic
+            // ===================================================
+
             
 
         };
