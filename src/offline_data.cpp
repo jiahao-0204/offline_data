@@ -9,7 +9,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/filters/voxel_grid.h>
 #include <pcl_ros/filters/passthrough.h>
-#include <pcl/filters/extract_indices.h>
+#include <pcl_ros/filters/extract_indices.h>
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
@@ -17,29 +17,27 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 
-#include <math.h>
+#include <cmath>
 
 
 
-sensor_msgs::PointCloud2 filter_voxelgrid(const sensor_msgs::PointCloud2 & msg_input, 
-    float size_x, float size_y, float size_z){
-    // downsample pointclouds in msg format using voxelgrid
+template <typename PointT>
+sensor_msgs::PointCloud2 msg_filter(pcl::Filter<PointT> & filter, const sensor_msgs::PointCloud2 & msg_input){
     
-    // define variables
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_input    (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output   (new pcl::PointCloud<pcl::PointXYZ>);
+    // ================ define variables =================
+    typename pcl::PointCloud<PointT>::Ptr pc_input    (new pcl::PointCloud<PointT>);
+    typename pcl::PointCloud<PointT>::Ptr pc_output   (new pcl::PointCloud<PointT>);
     sensor_msgs::PointCloud2 msg_output;
-    
+    // ===================================================
 
+    
     // ================ convert msg -> pc ================
     pcl::fromROSMsg(msg_input, *pc_input);
     // ===================================================
     
 
-    // ================ Voxelgrid Filter =================
-    pcl::VoxelGrid<pcl::PointXYZ> filter;
+    // ===================== Filter ======================
     filter.setInputCloud(pc_input);
-    filter.setLeafSize(size_x, size_y, size_z);
     filter.filter(*pc_output);
     // ===================================================
 
@@ -48,58 +46,36 @@ sensor_msgs::PointCloud2 filter_voxelgrid(const sensor_msgs::PointCloud2 & msg_i
     pcl::toROSMsg(*pc_output, msg_output);
     // ===================================================
 
-    // return
+
+    // ===================== return ======================
     return msg_output;
+    // ===================================================
 };
 
 
 
-sensor_msgs::PointCloud2 filter_range(const sensor_msgs::PointCloud2 & msg_input, 
-    const float threshold){
-    // filter point cloud is msgs format by range
-    
-    // define variables
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_input    (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output   (new pcl::PointCloud<pcl::PointXYZ>);
-    sensor_msgs::PointCloud2 msg_output;
-    
+pcl::PointCloud<pcl::PointWithRange> add_range(pcl::PointCloud<pcl::PointXYZ> cloud){
 
-    // ================ convert msg -> pc ================
-    pcl::fromROSMsg(msg_input, *pc_input);
-    // ===================================================
+    // define variable
+    pcl::PointCloud<pcl::PointWithRange> cloud_range;
 
+    // loop over all points in the cloud
+    for (int p = 0; p < cloud.points.size(); ++p) {
+        
+        // prepare point
+        pcl::PointWithRange point;
+        point.x = cloud.points[p].x;
+        point.y = cloud.points[p].y;
+        point.z = cloud.points[p].z;
+        point.range = std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2));
 
-    // ================== Range Filter ===================
-    pcl::ExtractIndices<pcl::PointXYZ> filter;
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-
-    for (int p = 0; p < pc_input->points.size(); ++p) {        
-        // calcualte distance
-        float distance2 =   (pc_input->points[p].x * pc_input->points[p].x) +
-                            (pc_input->points[p].y * pc_input->points[p].y) + 
-                            (pc_input->points[p].z * pc_input->points[p].z);
-        float distance = std::sqrt(distance2);
-        // record points inside threshold
-        if (distance < threshold){
-            inliers->indices.push_back(p);
-        };
+        // add to new cloud
+        cloud_range.push_back(point);
     };
-    filter.setInputCloud(pc_input);
-    filter.setIndices(inliers);
-    filter.filter(*pc_output);
-    // ===================================================
-
-
-    // ================ convert pc -> msg ================
-    pcl::toROSMsg(*pc_output, msg_output);
-    // ===================================================
 
     // return
-    return msg_output;
+    return cloud_range;
 };
-
-
-
 
 
 
@@ -277,7 +253,8 @@ int main(int argc, char **argv){
             // 
 
             // define variable
-            pcl::PointCloud<pcl::PointXYZ> cloud;
+            pcl::PointCloud<pcl::PointXYZ> cloud_xyz;
+            pcl::PointCloud<pcl::PointWithRange> cloud;
             std::stringstream path_sub;
             std::string path_pcd;
 
@@ -286,10 +263,13 @@ int main(int argc, char **argv){
             path_pcd = path_parent + path_sub.str();
 
             // read from file
-            if (pcl::io::loadPCDFile<pcl::PointXYZ>(path_pcd, cloud) < 0){
+            if (pcl::io::loadPCDFile<pcl::PointXYZ>(path_pcd, cloud_xyz) < 0){
                 // file not found, do next while loop
                 continue; 
             };
+
+            //! add range information
+            cloud = add_range(cloud_xyz);
     
             // convert cloud to msg format
             sensor_msgs::PointCloud2 pc_msg;
@@ -303,7 +283,13 @@ int main(int argc, char **argv){
 
 
             // ================= FILTER BY RANGE =================
-            pc_msg = filter_range(pc_msg, range_threshold);
+            // set filter
+            pcl::PassThrough<pcl::PointWithRange> filter_rg;
+            filter_rg.setFilterFieldName("range");
+            filter_rg.setFilterLimits(0, range_threshold);
+
+            // filtering            
+            pc_msg = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg);
             // ===================================================
 
 
@@ -340,8 +326,17 @@ int main(int argc, char **argv){
 
 
 
-            // ============= DOWNSAMPLE POINT CLOUD ==============            
-            pc_msg_all = filter_voxelgrid(pc_msg_merged, voxelgrid_size, voxelgrid_size, voxelgrid_size);
+            // ================ DOWNSAMPLE FILTER ================            
+            // set filter
+            pcl::VoxelGrid<pcl::PointWithRange> filter_ds;
+            filter_ds.setLeafSize(voxelgrid_size, voxelgrid_size, voxelgrid_size);
+
+            // filtering
+            if (voxelgrid_size == 0) {
+                pc_msg_all = pc_msg_merged;
+            } else {
+                pc_msg_all = msg_filter<pcl::PointWithRange>(filter_ds, pc_msg_merged);    
+            };
             // ===================================================
 
 

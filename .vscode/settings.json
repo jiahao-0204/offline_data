@@ -73,6 +73,9 @@
         "set": "cpp",
         "string": "cpp",
         "variant": "cpp",
-        "bit": "cpp"
+        "bit": "cpp",
+        "*.tpp": "cpp",
+        "*.ipp": "cpp",
+        "orderingmethods": "cpp"
     }
 }
