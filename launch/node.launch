@@ -4,9 +4,9 @@
   <!-- arguments -->
   <arg name="file_path"       default="$(find offline_data)/file/exp01-02/slam_pose_graph.g2o"/> 
   <arg name="ds_size"         default="0.075"/> 
-  <arg name="range_threshold" default="5"/> 
+  <arg name="range_threshold" default="10"/> 
+  <arg name="range_step"      default="1"/>
 
   <!-- launch offline_data -->
-  <node name="offline_data" pkg="offline_data" type="offline_data" args="$(arg file_path) $(arg range_threshold) $(arg ds_size)"/>
-
+  <node name="offline_data" pkg="offline_data" type="offline_data" args="$(arg file_path) $(arg range_threshold) $(arg ds_size) $(arg range_step)"/>
 </launch>

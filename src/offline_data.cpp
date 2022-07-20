@@ -89,6 +89,7 @@ int main(int argc, char **argv){
     std::string path_posegraph = argv[1];
     float range_threshold = std::stof(std::string(argv[2]));
     float voxelgrid_size = std::stof(std::string(argv[3]));
+    float step = std::stof(std::string(argv[4]));
     // ===================================================
 
 
@@ -102,20 +103,27 @@ int main(int argc, char **argv){
 
     // ================== PUBLISHERS =====================
     // PointCloud2 to /transformed
-    ros::Publisher pub_transformed = nh.advertise<sensor_msgs::PointCloud2> ("transformed", 100);
+    ros::Publisher pub_transformed = nh.advertise<sensor_msgs::PointCloud2> ("transformed", 100, true);
 
     // PointCloud2 to /all_ds
-    ros::Publisher pub_all_ds = nh.advertise<sensor_msgs::PointCloud2> ("all_ds", 100);
+    ros::Publisher pub_all_ds = nh.advertise<sensor_msgs::PointCloud2> ("all_ds", 100, true);
 
     // Pose to /pose
-    ros::Publisher pub_pose = nh.advertise<geometry_msgs::PoseStamped> ("pose", 100);
+    ros::Publisher pub_pose = nh.advertise<geometry_msgs::PoseStamped> ("pose", 100, true);
 
     // Path to /path
-    ros::Publisher pub_path = nh.advertise<nav_msgs::Path> ("path", 100);
+    ros::Publisher pub_path = nh.advertise<nav_msgs::Path> ("path", 100, true);
 
     // TF to /tf2
     tf2_ros::TransformBroadcaster br;
 
+
+    // display by range
+    ros::Publisher pub_range1 = nh.advertise<sensor_msgs::PointCloud2> ("range1", 100, true);
+    ros::Publisher pub_range2 = nh.advertise<sensor_msgs::PointCloud2> ("range2", 100, true);
+    ros::Publisher pub_range3 = nh.advertise<sensor_msgs::PointCloud2> ("range3", 100, true);
+    ros::Publisher pub_range4 = nh.advertise<sensor_msgs::PointCloud2> ("range4", 100, true);
+    ros::Publisher pub_range5 = nh.advertise<sensor_msgs::PointCloud2> ("range5", 100, true);
     // ===================================================
     
 
@@ -322,6 +330,41 @@ int main(int argc, char **argv){
             // 
             sensor_msgs::PointCloud2 pc_msg_merged;
             pcl::concatenatePointCloud(pc_msg_transformed, pc_msg_all, pc_msg_merged);
+            pc_msg_all = pc_msg_merged;
+            // ===================================================
+
+
+
+            // ================ PUBLISH BY RANGE =================
+            // pcl::PassThrough<pcl::PointWithRange> filter_rg; // declared before
+            // filter_rg.setFilterFieldName("range");
+
+            sensor_msgs::PointCloud2 pc_msg_range1;
+            sensor_msgs::PointCloud2 pc_msg_range2;
+            sensor_msgs::PointCloud2 pc_msg_range3;
+            sensor_msgs::PointCloud2 pc_msg_range4;
+            sensor_msgs::PointCloud2 pc_msg_range5;
+
+            filter_rg.setFilterLimits(0*step, 1*step); 
+            pc_msg_range1 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
+            pub_range1.publish(pc_msg_range1);
+
+            filter_rg.setFilterLimits(1*step, 2*step); 
+            pc_msg_range2 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
+            pub_range2.publish(pc_msg_range2);
+
+            filter_rg.setFilterLimits(2*step, 3*step); 
+            pc_msg_range3 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
+            pub_range3.publish(pc_msg_range3);
+
+            filter_rg.setFilterLimits(3*step, 4*step); 
+            pc_msg_range4 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
+            pub_range4.publish(pc_msg_range4);
+
+            filter_rg.setFilterLimits(4*step, 5*step); 
+            pc_msg_range5 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
+            pub_range5.publish(pc_msg_range5);
+
             // ===================================================
 
 
@@ -333,9 +376,9 @@ int main(int argc, char **argv){
 
             // filtering
             if (voxelgrid_size == 0) {
-                pc_msg_all = pc_msg_merged;
+                // do nothing
             } else {
-                pc_msg_all = msg_filter<pcl::PointWithRange>(filter_ds, pc_msg_merged);    
+                pc_msg_all = msg_filter<pcl::PointWithRange>(filter_ds, pc_msg_all);    
             };
             // ===================================================
 
@@ -352,6 +395,11 @@ int main(int argc, char **argv){
 
     rate.sleep();
         
+    };
+
+    // continue
+    while (ros::ok()){
+        rate.sleep();
     };
 
     // ===================================================
