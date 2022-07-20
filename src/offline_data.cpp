@@ -79,8 +79,8 @@ sensor_msgs::PointCloud2 filter_range(const sensor_msgs::PointCloud2 & msg_input
                             (pc_input->points[p].y * pc_input->points[p].y) + 
                             (pc_input->points[p].z * pc_input->points[p].z);
         float distance = std::sqrt(distance2);
-        // record points outside threshold
-        if (distance > threshold){
+        // record points inside threshold
+        if (distance < threshold){
             inliers->indices.push_back(p);
         };
     };
