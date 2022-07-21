@@ -2,7 +2,7 @@
 
 <launch>
   <!-- arguments -->
-  <arg name="rviz_config"     default="$(find offline_data)/rviz/visualize.rviz"/>
+  <arg name="rviz_config"     default="$(find offline_data)/rviz/visualize_cloud.rviz"/>
   <arg name="path_input"      default="$(find offline_data)/file/exp01-02/test_output.pcd"/>
   <arg name="step"            default="2"/>
 
