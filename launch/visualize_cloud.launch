@@ -10,6 +10,6 @@
   <node name="offline_rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)"/> 
 
   <!-- include node -->
-  <node name="visualize_node" pkg="offline_data" type="visualize" args="$(arg path_input) $(arg step)"/> 
+  <node name="visualize_node" pkg="offline_data" type="visualize_cloud" args="$(arg path_input) $(arg step)"/> 
 
 </launch>

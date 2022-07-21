@@ -90,7 +90,7 @@ int main(int argc, char **argv){
     nav_msgs::Path path; 
     std::string line; 
 
-    while ( std::getline(infile, line) && ros::ok()){
+    while (std::getline(infile, line)){
         
         // ================ EXECUTE FOR EACH LINE ================
         // 
@@ -213,6 +213,9 @@ int main(int argc, char **argv){
             };
 
             //! add range information
+            //! range information must be added from lidar's local frame of referece.
+            //! once exported, the range would be calculated from global coordinate center
+            //! instead.
             cloud = offline_data::add_range(cloud_xyz);
     
             // convert cloud to msg format
@@ -267,8 +270,6 @@ int main(int argc, char **argv){
 
         };
         
-
-    rate.sleep();
         
     };
 
