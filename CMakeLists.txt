@@ -121,6 +121,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
+  ./include/offline_data
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -140,8 +141,19 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/offline_data_node.cpp)
 
 
-add_executable(offline_data src/offline_data.cpp)
-target_link_libraries(offline_data ${catkin_LIBRARIES})
+add_executable(combine_cloud 
+  src/combine_cloud.cpp 
+  src/add_attribute.cpp
+)
+target_link_libraries(combine_cloud ${catkin_LIBRARIES})
+
+
+add_executable(visualize_cloud 
+  src/visualize_cloud.cpp 
+)
+target_link_libraries(visualize_cloud ${catkin_LIBRARIES})
+
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

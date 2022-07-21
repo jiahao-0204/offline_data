@@ -10,6 +10,7 @@
 #include <pcl_ros/filters/voxel_grid.h>
 #include <pcl_ros/filters/passthrough.h>
 #include <pcl_ros/filters/extract_indices.h>
+#include <pcl/io/pcd_io.h>
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
@@ -20,63 +21,7 @@
 #include <cmath>
 
 
-
-template <typename PointT>
-sensor_msgs::PointCloud2 msg_filter(pcl::Filter<PointT> & filter, const sensor_msgs::PointCloud2 & msg_input){
-    
-    // ================ define variables =================
-    typename pcl::PointCloud<PointT>::Ptr pc_input    (new pcl::PointCloud<PointT>);
-    typename pcl::PointCloud<PointT>::Ptr pc_output   (new pcl::PointCloud<PointT>);
-    sensor_msgs::PointCloud2 msg_output;
-    // ===================================================
-
-    
-    // ================ convert msg -> pc ================
-    pcl::fromROSMsg(msg_input, *pc_input);
-    // ===================================================
-    
-
-    // ===================== Filter ======================
-    filter.setInputCloud(pc_input);
-    filter.filter(*pc_output);
-    // ===================================================
-
-
-    // ================ convert pc -> msg ================
-    pcl::toROSMsg(*pc_output, msg_output);
-    // ===================================================
-
-
-    // ===================== return ======================
-    return msg_output;
-    // ===================================================
-};
-
-
-
-pcl::PointCloud<pcl::PointWithRange> add_range(pcl::PointCloud<pcl::PointXYZ> cloud){
-
-    // define variable
-    pcl::PointCloud<pcl::PointWithRange> cloud_range;
-
-    // loop over all points in the cloud
-    for (int p = 0; p < cloud.points.size(); ++p) {
-        
-        // prepare point
-        pcl::PointWithRange point;
-        point.x = cloud.points[p].x;
-        point.y = cloud.points[p].y;
-        point.z = cloud.points[p].z;
-        point.range = std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2));
-
-        // add to new cloud
-        cloud_range.push_back(point);
-    };
-
-    // return
-    return cloud_range;
-};
-
+#include "add_attribute.hpp"
 
 
 int main(int argc, char **argv){
@@ -86,44 +31,34 @@ int main(int argc, char **argv){
 
 
     // =================== ARGUMENTS =====================
-    std::string path_posegraph = argv[1];
-    float range_threshold = std::stof(std::string(argv[2]));
-    float voxelgrid_size = std::stof(std::string(argv[3]));
-    float step = std::stof(std::string(argv[4]));
+    std::string path_input = argv[1];
+    std::string path_output = argv[2];
     // ===================================================
 
 
     // ===================== NODE ========================
-    ros::init(argc, argv, "offline_data");
+    ros::init(argc, argv, "combine_data");
     ros::NodeHandle nh;
-    ros::Rate rate(10);
+    ros::Rate rate(100);
     // ===================================================
 
 
 
     // ================== PUBLISHERS =====================
-    // PointCloud2 to /transformed
-    ros::Publisher pub_transformed = nh.advertise<sensor_msgs::PointCloud2> ("transformed", 100, true);
+    // TF to /tf2
+    tf2_ros::TransformBroadcaster br;
 
-    // PointCloud2 to /all_ds
-    ros::Publisher pub_all_ds = nh.advertise<sensor_msgs::PointCloud2> ("all_ds", 100, true);
+    // PointCloud2 to /new
+    ros::Publisher pub_pc_new = nh.advertise<sensor_msgs::PointCloud2> ("new", 100, true);
+
+    // PointCloud2 to /all
+    ros::Publisher pub_pc_all = nh.advertise<sensor_msgs::PointCloud2> ("all", 100, true);
 
     // Pose to /pose
     ros::Publisher pub_pose = nh.advertise<geometry_msgs::PoseStamped> ("pose", 100, true);
 
     // Path to /path
     ros::Publisher pub_path = nh.advertise<nav_msgs::Path> ("path", 100, true);
-
-    // TF to /tf2
-    tf2_ros::TransformBroadcaster br;
-
-
-    // display by range
-    ros::Publisher pub_range1 = nh.advertise<sensor_msgs::PointCloud2> ("range1", 100, true);
-    ros::Publisher pub_range2 = nh.advertise<sensor_msgs::PointCloud2> ("range2", 100, true);
-    ros::Publisher pub_range3 = nh.advertise<sensor_msgs::PointCloud2> ("range3", 100, true);
-    ros::Publisher pub_range4 = nh.advertise<sensor_msgs::PointCloud2> ("range4", 100, true);
-    ros::Publisher pub_range5 = nh.advertise<sensor_msgs::PointCloud2> ("range5", 100, true);
     // ===================================================
     
 
@@ -142,10 +77,10 @@ int main(int argc, char **argv){
     // ============ READ POSEGRAPH FILE ==================
     
     // extract path to pose graph file & path to its folder
-    std::string path_parent = path_posegraph.substr(0, path_posegraph.rfind("/"));
+    std::string path_parent = path_input.substr(0, path_input.rfind("/"));
 
     // read posegraph file
-    std::ifstream infile(path_posegraph);
+    std::ifstream infile(path_input);
     // ===================================================
 
 
@@ -273,11 +208,12 @@ int main(int argc, char **argv){
             // read from file
             if (pcl::io::loadPCDFile<pcl::PointXYZ>(path_pcd, cloud_xyz) < 0){
                 // file not found, do next while loop
+                std::cout<<"file not found"<<std::endl;
                 continue; 
             };
 
             //! add range information
-            cloud = add_range(cloud_xyz);
+            cloud = offline_data::add_range(cloud_xyz);
     
             // convert cloud to msg format
             sensor_msgs::PointCloud2 pc_msg;
@@ -286,18 +222,6 @@ int main(int argc, char **argv){
             // added stamp and frame_id
             pc_msg.header.frame_id = frame_lidar;
             pc_msg.header.stamp = stamp;
-            // ===================================================
-
-
-
-            // ================= FILTER BY RANGE =================
-            // set filter
-            pcl::PassThrough<pcl::PointWithRange> filter_rg;
-            filter_rg.setFilterFieldName("range");
-            filter_rg.setFilterLimits(0, range_threshold);
-
-            // filtering            
-            pc_msg = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg);
             // ===================================================
 
 
@@ -319,7 +243,7 @@ int main(int argc, char **argv){
             pcl_ros::transformPointCloud(frame_local, pc_msg, pc_msg_transformed, tfBuffer);
             
             // upload to /transformed topic (to be visualized in rviz)
-            pub_transformed.publish(pc_msg_transformed);
+            pub_pc_new.publish(pc_msg_transformed);
             // ===================================================
 
 
@@ -335,57 +259,8 @@ int main(int argc, char **argv){
 
 
 
-            // ================ PUBLISH BY RANGE =================
-            // pcl::PassThrough<pcl::PointWithRange> filter_rg; // declared before
-            // filter_rg.setFilterFieldName("range");
-
-            sensor_msgs::PointCloud2 pc_msg_range1;
-            sensor_msgs::PointCloud2 pc_msg_range2;
-            sensor_msgs::PointCloud2 pc_msg_range3;
-            sensor_msgs::PointCloud2 pc_msg_range4;
-            sensor_msgs::PointCloud2 pc_msg_range5;
-
-            filter_rg.setFilterLimits(0*step, 1*step); 
-            pc_msg_range1 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
-            pub_range1.publish(pc_msg_range1);
-
-            filter_rg.setFilterLimits(1*step, 2*step); 
-            pc_msg_range2 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
-            pub_range2.publish(pc_msg_range2);
-
-            filter_rg.setFilterLimits(2*step, 3*step); 
-            pc_msg_range3 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
-            pub_range3.publish(pc_msg_range3);
-
-            filter_rg.setFilterLimits(3*step, 4*step); 
-            pc_msg_range4 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
-            pub_range4.publish(pc_msg_range4);
-
-            filter_rg.setFilterLimits(4*step, 5*step); 
-            pc_msg_range5 = msg_filter<pcl::PointWithRange>(filter_rg, pc_msg_all);
-            pub_range5.publish(pc_msg_range5);
-
-            // ===================================================
-
-
-
-            // ================ DOWNSAMPLE FILTER ================            
-            // set filter
-            pcl::VoxelGrid<pcl::PointWithRange> filter_ds;
-            filter_ds.setLeafSize(voxelgrid_size, voxelgrid_size, voxelgrid_size);
-
-            // filtering
-            if (voxelgrid_size == 0) {
-                // do nothing
-            } else {
-                pc_msg_all = msg_filter<pcl::PointWithRange>(filter_ds, pc_msg_all);    
-            };
-            // ===================================================
-
-
-
-            // =============== PUBLISH TO /all_ds ================
-            pub_all_ds.publish(pc_msg_all); // publish to /all_ds topic
+            // ================= PUBLISH TO /all =================
+            pub_pc_all.publish(pc_msg_all); // publish to /all topic
             // ===================================================
 
             
@@ -397,7 +272,13 @@ int main(int argc, char **argv){
         
     };
 
-    // continue
+    // ================= STORE DATA ======================
+    pcl::PointCloud<pcl::PointWithRange> cloud_to_write;
+    pcl::fromROSMsg(pc_msg_all, cloud_to_write);
+    pcl::io::savePCDFile(path_output, cloud_to_write, true);
+    // ===================================================
+
+    // keep node alive
     while (ros::ok()){
         rate.sleep();
     };
