@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- arguments -->
+  <arg name="rviz_config"     default="$(find offline_data)/rviz/visualize_surfel.rviz"/>
+  <arg name="path_input"      default="$(find offline_data)/file/exp01-02/test_output.pcd"/>
+
+  <!-- launch rviz -->
+  <node name="offline_rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)"/> 
+
+  <!-- include node -->
+  <node name="visualize_surfel" pkg="offline_data" type="visualize_surfel" args="$(arg path_input)"/> 
+
+</launch>

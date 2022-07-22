@@ -154,6 +154,11 @@ add_executable(visualize_cloud
 target_link_libraries(visualize_cloud ${catkin_LIBRARIES})
 
 
+add_executable(visualize_surfel 
+  src/visualize_surfel.cpp 
+)
+target_link_libraries(visualize_surfel ${catkin_LIBRARIES})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
