@@ -77,5 +77,6 @@
         "*.tpp": "cpp",
         "*.ipp": "cpp",
         "orderingmethods": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

@@ -15,6 +15,7 @@
 #include <pcl/io/pcd_io.h>
 
 
+// TODO create a listener, that changes the point cloud filtering based on external string input
 
 int main(int argc, char **argv){
 

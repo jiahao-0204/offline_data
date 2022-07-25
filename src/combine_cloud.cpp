@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -188,7 +187,6 @@ int main(int argc, char **argv){
             // ===================================================
 
 
-
             // =============== READ POINTCLOUD DATA ==============
             // 
             // 1. read pcd data from local file
@@ -207,15 +205,21 @@ int main(int argc, char **argv){
 
             // read from file
             if (pcl::io::loadPCDFile<pcl::PointXYZ>(path_pcd, cloud_xyz) < 0){
+                std::cout<<path_pcd<<std::endl;
                 // file not found, do next while loop
                 std::cout<<"file not found"<<std::endl;
                 continue; 
             };
 
+            std::cout<<"file found"<<std::endl;
+
+
             //! add range information
             //! range information must be added from lidar's local frame of referece.
             //! once exported, the range would be calculated from global coordinate center
             //! instead.
+            // TODO instead of adding range, add the position of observer, thus nmore general purpose
+            // TODO and allows range filtering to tbe done later on.
             cloud = offline_data::add_range(cloud_xyz);
     
             // convert cloud to msg format
@@ -274,9 +278,9 @@ int main(int argc, char **argv){
     };
 
     // ================= STORE DATA ======================
-    pcl::PointCloud<pcl::PointWithRange> cloud_to_write;
-    pcl::fromROSMsg(pc_msg_all, cloud_to_write);
-    pcl::io::savePCDFile(path_output, cloud_to_write, true);
+    // pcl::PointCloud<pcl::PointWithRange> cloud_to_write;
+    // pcl::fromROSMsg(pc_msg_all, cloud_to_write);
+    // pcl::io::savePCDFile(path_output, cloud_to_write, true);
     // ===================================================
 
     // keep node alive
