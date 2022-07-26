@@ -66,6 +66,7 @@ int main(int argc, char **argv){
     ros::Publisher pub_markers = nh.advertise<visualization_msgs::MarkerArray> ("surfel_marker", 100, true);
     ros::Publisher pub_pc_original = nh.advertise<sensor_msgs::PointCloud2> ("all", 100, true);
     ros::Publisher pub_pc_dsampled = nh.advertise<sensor_msgs::PointCloud2> ("ds", 100, true);
+    ros::Publisher pub_surfel = nh.advertise<sensor_msgs::PointCloud2> ("surfel", 100, true);
     // ===================================================
 
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv){
 
     // ================== PUB ORIGINAL ===================
     // cloud_xyz to msg
-    sensor_msgs::PointCloud2 msg_pc_original;
+    sensor_msgs::PointCloud2 msg_pc_original; 
     pcl::toROSMsg(cloud_xyz, msg_pc_original);
     msg_pc_original.header.frame_id = "map";
 
@@ -142,6 +143,14 @@ int main(int argc, char **argv){
     // ===================================================
 
 
+    // publish surfel
+    sensor_msgs::PointCloud2 msg_pc_surfel; 
+    pcl::toROSMsg(cloud_surfel, msg_pc_surfel);
+    msg_pc_surfel.header.frame_id = "map";
+
+    // pub
+    pub_surfel.publish(msg_pc_surfel);
+    // ===================================================
 
 
     // ================ CONVERT TO MARKER ================
