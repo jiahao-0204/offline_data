@@ -278,9 +278,9 @@ int main(int argc, char **argv){
     };
 
     // ================= STORE DATA ======================
-    // pcl::PointCloud<pcl::PointWithRange> cloud_to_write;
-    // pcl::fromROSMsg(pc_msg_all, cloud_to_write);
-    // pcl::io::savePCDFile(path_output, cloud_to_write, true);
+    pcl::PointCloud<pcl::PointWithRange> cloud_to_write;
+    pcl::fromROSMsg(pc_msg_all, cloud_to_write);
+    pcl::io::savePCDFile(path_output, cloud_to_write, true);
     // ===================================================
 
     // keep node alive

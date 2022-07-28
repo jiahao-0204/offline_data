@@ -49,6 +49,7 @@ int main(int argc, char **argv){
 
     // =================== ARGUMENTS =====================
     std::string path_input = argv[1];
+    float published_marker = std::stof(std::string(argv[2]));
     float ds_size = 0.3;
     // ===================================================
 
@@ -126,7 +127,7 @@ int main(int argc, char **argv){
     pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointSurfel> filter_mls;
     filter_mls.setInputCloud (cloud_xyz_ptr);
     filter_mls.setComputeNormals (true);
-    filter_mls.setPolynomialOrder (3);
+    filter_mls.setPolynomialOrder (1);
     filter_mls.setSearchMethod (tree);
     filter_mls.setSearchRadius (1);
     filter_mls.process(cloud_surfel);
@@ -152,60 +153,62 @@ int main(int argc, char **argv){
     pub_surfel.publish(msg_pc_surfel);
     // ===================================================
 
+    if (published_marker) {
 
-    // ================ CONVERT TO MARKER ================
-    // ! could combine with surfel generation, but seperate for compatability
-    // TODO need to find if there is simpler way to display surfel
-    
-    // marker array
-    visualization_msgs::MarkerArray marker_array;
-    
-    
-    for (int p = 0; p < cloud_surfel.points.size(); ++p) {
-
-        // surfel, normal, quaternion
-        pcl::PointSurfel surfel = cloud_surfel.points[p];
-        tf2::Vector3 n(surfel.normal_x, surfel.normal_y, surfel.normal_z);
-        tf2::Quaternion q = quat_between_vectors(tf2::Vector3(0, 0, 1), n);
+        // ================ CONVERT TO MARKER ================
+        // ! could combine with surfel generation, but seperate for compatability
+        // TODO need to find if there is simpler way to display surfel
         
-        // marker
-        visualization_msgs::Marker marker;
-        marker.type = visualization_msgs::Marker::CYLINDER;
-        marker.header.frame_id = "map";
-        marker.id = p;     
-
-        marker.scale.x = surfel.radius;
-        marker.scale.y = surfel.radius;       
-        marker.scale.z = 0.01;
-
-        marker.color.r = 1;
-        marker.color.g = 1;
-        marker.color.b = 1;
-        marker.color.a = 1;
-
-        marker.pose.position.x = surfel.x;
-        marker.pose.position.y = surfel.y;
-        marker.pose.position.z = surfel.z;
+        // marker array
+        visualization_msgs::MarkerArray marker_array;
         
-        marker.pose.orientation.x = q.getX();
-        marker.pose.orientation.y = q.getY();
-        marker.pose.orientation.z = q.getZ();
-        marker.pose.orientation.w = q.getW();
+        
+        for (int p = 0; p < cloud_surfel.points.size(); ++p) {
+
+            // surfel, normal, quaternion
+            pcl::PointSurfel surfel = cloud_surfel.points[p];
+            tf2::Vector3 n(surfel.normal_x, surfel.normal_y, surfel.normal_z);
+            tf2::Quaternion q = quat_between_vectors(tf2::Vector3(0, 0, 1), n);
+            
+            // marker
+            visualization_msgs::Marker marker;
+            marker.type = visualization_msgs::Marker::CYLINDER;
+            marker.header.frame_id = "map";
+            marker.id = p;     
+
+            marker.scale.x = surfel.radius;
+            marker.scale.y = surfel.radius;       
+            marker.scale.z = 0.01;
+
+            marker.color.r = 1;
+            marker.color.g = 1;
+            marker.color.b = 1;
+            marker.color.a = 1;
+
+            marker.pose.position.x = surfel.x;
+            marker.pose.position.y = surfel.y;
+            marker.pose.position.z = surfel.z;
+            
+            marker.pose.orientation.x = q.getX();
+            marker.pose.orientation.y = q.getY();
+            marker.pose.orientation.z = q.getZ();
+            marker.pose.orientation.w = q.getW();
 
 
-        // store in marker array
-        marker_array.markers.push_back(marker);
-    };    
-    // ===================================================
+            // store in marker array
+            marker_array.markers.push_back(marker);
+        };    
+        // ===================================================
 
 
 
-    // ================= PUBLISH ARRAY ===================
-    pub_markers.publish(marker_array);
-    std::cout << "finished" << std::endl;
-    // ===================================================
+        // ================= PUBLISH ARRAY ===================
+        pub_markers.publish(marker_array);
+        std::cout << "finished" << std::endl;
+        // ===================================================
 
 
+    };
 
     // ================== KEEP ALIVE =====================
     while(ros::ok()){ rate.sleep(); };
