@@ -85,15 +85,15 @@ int main(int argc, char **argv){
     filter_rg.setFilterFieldName("range");
 
     // filtering
-    filter_rg.setFilterLimits(0*step, 1*step); 
+    filter_rg.setFilterLimits(0, 10); 
     filter_rg.filter(cloud1);
-    filter_rg.setFilterLimits(1*step, 2*step); 
+    filter_rg.setFilterLimits(10, 20); 
     filter_rg.filter(cloud2);
     filter_rg.setFilterLimits(2*step, 3*step); 
     filter_rg.filter(cloud3);
     filter_rg.setFilterLimits(3*step, 4*step); 
     filter_rg.filter(cloud4);
-    filter_rg.setFilterLimits(4*step, 5*step); 
+    filter_rg.setFilterLimits(40, 80); 
     filter_rg.filter(cloud5);
 
     // convert to msgs
