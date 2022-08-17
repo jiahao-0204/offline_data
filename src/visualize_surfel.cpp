@@ -138,7 +138,7 @@ int main(int argc, char **argv){
     // =================== ADD RADIUS ====================
     // using fixed radius
     for (int p = 0; p < cloud_surfel.points.size(); ++p) {
-        cloud_surfel.points[p].radius = ds_size;
+        cloud_surfel.points[p].radius = ds_size/2;
         std::cout << cloud_surfel.points[p].normal_x << cloud_surfel.points[p].normal_y << cloud_surfel.points[p].normal_z << std::endl;
     };
     // ===================================================
